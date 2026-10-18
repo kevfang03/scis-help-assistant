@@ -57,7 +57,7 @@ tests/                   # mirrors src; fixtures/ holds small synthetic HTML in 
 
 ## Decisions
 
-### D1. Embeddings and index: local fastembed + BM25 hybrid, brute-force numpy (Proposed)
+### D1. Embeddings and index: local fastembed + BM25 hybrid, brute-force numpy (Decided, 2026-10-18)
 - **Embedder:** `fastembed` with `BAAI/bge-small-en-v1.5` (384 dimensions, ~70 MB ONNX, CPU, no PyTorch). Free, offline after the first download, wheels for Windows and macOS. Use `query_embed` for questions and `passage_embed` for chunks (bge's query prefix is handled for us). Anthropic has no embedding endpoint; a paid embedding API would add a second vendor, a second key and per-crawl cost for no gain at this size.
 - **Lexical:** BM25 over the same chunks (`bm25s`), because course codes, product names and error strings ("CCIREPO", "GlobalProtect", "CS 265") match better lexically.
 - **Fusion:** Reciprocal Rank Fusion (k = 60) of the two top-20 lists, then de-duplicate to at most 2 chunks per page; return top `k` (default 5) chunks.
@@ -65,10 +65,10 @@ tests/                   # mirrors src; fixtures/ holds small synthetic HTML in 
 - **Confidence gate:** if the best dense cosine score is below `retrieval.min_score` (default 0.55, tuned on the dev split) **and** BM25 has no hit, skip the LLM and answer "not covered". Saves cost on out-of-scope questions.
 - **Index manifest** records the model id; `ask` refuses to run (config error) if the configured model differs from the index's.
 
-### D2. Chunking (Proposed)
+### D2. Chunking (Decided, 2026-10-18)
 Split each article at `h2`/`h3` boundaries; merge small sections and split long ones to about 150–450 words with a 1-sentence overlap. Each chunk's embedded text is `"{page title} › {heading path}\n{text}"`. Code blocks and tables are kept as text. Pages under 30 words (index/listing pages) are indexed as one chunk.
 
-### D3. Crawler (Proposed)
+### D3. Crawler (Decided, 2026-10-18)
 - Seeds from `sitemap.xml` only; never follows links off `support.cci.drexel.edu`, never fetches PDFs or images.
 - Fetches robots.txt first each crawl; if it exists, obeys it (`urllib.robotparser`), and it is re-checked when it changes.
 - `crawl.delay_seconds` default **1.5** (minimum 1.0, enforced), one connection, `User-Agent: scis-help-assistant/0.1 (unofficial student project; +https://github.com/kevfang03/scis-help-assistant)`.
@@ -77,7 +77,7 @@ Split each article at `h2`/`h3` boundaries; merge small sections and split long 
 - Stores extracted text, URL, title, section (first path segment), lastmod and a content hash. No raw HTML is stored.
 - A full crawl at 1.5 s/page takes about 17 minutes; re-crawls are fast because of `lastmod`.
 
-### D4. Answering (Proposed)
+### D4. Answering (Decided, 2026-10-18)
 - **Model:** `claude-haiku-5-5` ($0.10 / $0.50 per million input/output tokens for prompts ≤ 100K; cache reads ~0.1× input; 5-minute cache writes 1.25×). Checked 2026-10-18 with the `claude-api` skill; re-verify in the payload.
 - **Request:** `output_config={"effort": "low", "format": <json schema>}` via `client.messages.parse(...)` with a pydantic model; no sampling parameters (Haiku 5.5 rejects non-default ones); `max_tokens` 600 (desk 900). Always check `stop_reason` (`refusal`, `max_tokens`) before reading output.
 - **Prompt layout for caching:** one fixed system prompt (rules for both modes, the answer style, the clarify rule, the "not covered" rule, 2–3 short worked examples), marked `cache_control: ephemeral`. It must be ≥ 512 tokens or it silently won't cache. The **mode**, the retrieved sources (numbered `[S1]…[S5]` with title and text, no URLs) and the scrubbed question go in the user turn. Both modes share one cache entry.
@@ -90,10 +90,10 @@ Split each article at `h2`/`h3` boundaries; merge small sections and split long 
   ```
 - **Validation (in code, not trusted to the model):** unknown source ids are dropped; `answered` with no valid source → `not_covered`; `clarify` is allowed only if no clarifying question was asked earlier in the session (otherwise the engine re-asks with "answer or say not covered"; one retry max). Links are built from index metadata for the valid ids. Public mode shows the used sources; desk mode shows used sources first, then every other retrieved source under "Also retrieved".
 - The Citations API is not used: it is incompatible with structured outputs, and our source-id validation gives the same guarantee for links.
-- **Not covered** text: "The SCIS support pages don't cover this. Talk to a person at the help desk: {contact}." (`answer.help_contact` setting.)
+- **Not covered** text: "The SCIS support pages don't cover this. Talk to a person at the help desk: {contact}." (`answer.help_contact` setting.) Default contact (owner's choice, 2026-10-18): a link to the support home page's "Talk to a person" section, `https://support.cci.drexel.edu/`, not a copied phone number or email.
 - **Clarify flow:** the CLI asks the one follow-up interactively; the web keeps per-session state. The follow-up answer is appended to the original question for a second retrieval.
 
-### D5. Web app and widget (Proposed)
+### D5. Web app and widget (Decided, 2026-10-18)
 - **FastAPI + uvicorn**, serving JSON endpoints and static files. No front-end build step.
 - **Widget:** one vanilla-JS file, `widget.js`, plus `widget.css`, rendered inside a **Shadow DOM** so the host page's styles can't break it. Embedded with one tag: `<script src="http://127.0.0.1:8765/widget.js" data-mode="public" defer></script>`. A floating bubble opens a chat panel: a privacy notice ("Don't enter passwords or student IDs"), messages, source links, 👍/👎 per answer, and an "Unofficial student project" footer.
 - Pages: `/` neutral demo host page (a plain fake "course resources" page with the widget); `/desk` the same widget with `data-mode="desk"`.
@@ -102,28 +102,28 @@ Split each article at `h2`/`h3` boundaries; merge small sections and split long 
 - Guardrails: message ≤ 500 chars; per session ≤ 20 messages and ≤ 40K tokens; per client IP ≤ 10 messages/minute; global daily budget from the LLM layer. Sessions are in memory (lost on restart; fine for a local demo). Binds `127.0.0.1:8765` by default. CORS off by default; `web.allowed_origins` for embedding on another local page.
 - Desk mode is not authenticated: today it only shows more detail from the same public pages. If a desk-only source is ever added, desk results must be served only to `127.0.0.1` callers and the CLI.
 
-### D6. LLM layer (Proposed)
+### D6. LLM layer (Decided, 2026-10-18)
 Copied in shape from enterprise-ai-ops-suite payload 06a, simplified (no data-class gate: input is always public pages plus a scrubbed user question).
 - Key in keyring, service `scis-help`, user `anthropic-api-key`. `scis-help llm set-key` (hidden prompt, `sk-ant-` check, asks before replacing), `llm status` (no network), `llm test` (one tiny call).
 - SDK client: `anthropic.Anthropic(api_key=..., http_client=anthropic.DefaultHttpxClient(verify=truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)), timeout=30, max_retries=2)`.
 - Daily token budget (`llm.daily_token_budget`, default 200,000) with a hard stop before the call; cache reads count at 10%. Usage per local day in `llm-usage.json`, kept 31 days, atomic writes.
 - One log line per call: purpose, mode, model, input/output/cache-read/cache-write tokens, cost estimate, status. Never the question, sources, prompt or output.
 
-### D7. Scrubbing (Proposed)
+### D7. Scrubbing (Decided, 2026-10-18)
 Applied to every user message before retrieval, the LLM and logs. Replaces, in order: password phrases (`password`/`pw`/`passcode` followed by `is`/`:`/`=` and a token → `[PASSWORD]`), emails → `[EMAIL]`, phone numbers → `[PHONE]`, 8-digit Drexel IDs → `[ID]`, Drexel user ids (2–3 letters + 2–4 digits, e.g. `abc123`) → `[USER]`. Over-scrubbing is acceptable. If anything was replaced, the reply starts with a one-line reminder not to share passwords or IDs. Counts only are logged.
 
-### D8. Unanswered log and feedback (Proposed)
+### D8. Unanswered log and feedback (Decided, 2026-10-18)
 - `unanswered.jsonl`: one line per `not_covered` (or gated) answer: date, mode, scrubbed question, top retrieved URL and score. `scis-help gaps` prints questions grouped by normalised text with counts, most frequent first (the docs-gap report).
 - `feedback.jsonl`: date, answer id, helpful (bool), mode, status, used URLs. No question text unless the answer was 👎 (then the scrubbed question, to find bad answers). `scis-help feedback` prints totals and the 👎 list.
 - No IPs, session ids or user agents are stored anywhere.
 
-### D9. Evaluation (Proposed)
+### D9. Evaluation (Decided, 2026-10-18)
 - `evals/questions.yaml`, about **30** questions: ~24 in-scope (each with 1–2 expected page URLs, written the way a student would ask, not in the page's wording) and ~6 out-of-scope (expected `not_covered`). Each has `split: dev | holdout` (about 2/3 dev). Tuning (`min_score`, `k`, chunk size, prompt) uses **dev only**; holdout is run once for the README numbers.
 - `scis-help eval retrieval [--split dev|holdout|all]`: free, no LLM. Reports **hit@3** and hit@5 (any expected URL among the top pages) and MRR.
 - `scis-help eval answers [--split ...] [--judge]`: runs the full engine. Reports: answered rate on in-scope, `not_covered` accuracy on out-of-scope, **citation hit** (a used source is an expected URL), and **groundedness**: with `--judge`, a Haiku judge rates each answer as fully supported / partly / unsupported by its cited chunks (structured output). Costs about one cent per run.
 - Results are written to `evals/results/<date>-<split>.json` (gitignored) and a Markdown table printed for the README.
 
-### D10. Config (Proposed)
+### D10. Config (Decided, 2026-10-18)
 `pydantic-settings`, env prefix `SCIS_HELP_`, nested delimiter `__`, reads `.env`. Sections: `crawl` (base_url, delay_seconds, max_pages), `index` (embed_model, chunk_words), `retrieval` (k, min_score), `llm` (enabled, model, effort, max_output_tokens, daily_token_budget, timeout_seconds, prices), `answer` (help_contact), `web` (host, port, allowed_origins, rate limits, session caps). `.env.example` lists every key with a comment.
 
 ## Sources
@@ -151,7 +151,7 @@ Retrieval filters by audience: public mode sees only `public` chunks; desk mode 
 ## Cost estimate
 Per question: system prompt ~900 tokens (cached after the first call), 5 chunks ~2,000 tokens, question and output ~400 → about $0.0004. The 200K-token daily budget allows roughly 70–90 questions a day for about $0.03. An eval run with the judge is under $0.02.
 
-## Payload plan (Proposed)
+## Payload plan (Decided, 2026-10-18)
 | # | Payload | Depends on | Target date |
 |---|---|---|---|
 | 01 | Scaffold (uv, config, paths, logging, TLS, exit codes) + support-site crawler + chunking + hybrid index + `crawl`, `index`, `search` (retrieval only, no LLM) | – | 10-18/19 |
