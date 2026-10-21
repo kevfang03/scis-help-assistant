@@ -1,0 +1,384 @@
+/* Help Assistant widget (unofficial student project). Loaded into the widget's shadow root.
+   Neutral greys and one blue; every text colour is at least 4.5:1 on its background. */
+
+:host {
+  all: initial;
+}
+
+.root {
+  --ink: #1f2937;        /* 14.7:1 on white */
+  --muted: #4b5563;      /* 7.6:1 on white, 6.9:1 on --surface */
+  --line: #d1d5db;
+  --surface: #f3f4f6;
+  --paper: #ffffff;
+  --accent: #1d4ed8;     /* 6.7:1 with white text */
+  --accent-dark: #1e40af;
+  --user: #e8eefc;       /* --ink on it: 13:1 */
+  --notice: #7c2d12;     /* 9.6:1 on --notice-bg */
+  --notice-bg: #fff7ed;
+  --error: #991b1b;      /* 7.4:1 on --error-bg */
+  --error-bg: #fef2f2;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+[hidden] {
+  display: none !important;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+}
+
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---- bubble ---- */
+
+.bubble {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 2147483000;
+  width: 56px;
+  height: 56px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  display: grid;
+  place-items: center;
+}
+
+.bubble:hover {
+  background: var(--accent-dark);
+}
+
+.bubble svg {
+  width: 26px;
+  height: 26px;
+  fill: currentColor;
+}
+
+/* ---- panel ---- */
+
+.panel {
+  position: fixed;
+  right: 20px;
+  bottom: 88px;
+  z-index: 2147483000;
+  width: 360px;
+  height: 520px;
+  max-height: calc(100vh - 108px);
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 8px 10px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.heading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: 12px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.text-button {
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+.icon-button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+}
+
+.icon-button:hover,
+.text-button:hover {
+  background: #e5e7eb;
+}
+
+.icon-button svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.privacy {
+  margin: 0;
+  padding: 6px 14px;
+  font-size: 13px;
+  color: var(--notice);
+  background: var(--notice-bg);
+  border-bottom: 1px solid var(--line);
+}
+
+/* ---- messages ---- */
+
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.msg {
+  max-width: 92%;
+  padding: 8px 12px;
+  border-radius: 10px;
+  overflow-wrap: anywhere;
+}
+
+.msg p,
+.msg ul,
+.msg ol,
+.msg pre {
+  margin: 0 0 6px;
+}
+
+.msg > :last-child,
+.answer > :last-child {
+  margin-bottom: 0;
+}
+
+.msg ul,
+.msg ol {
+  padding-left: 20px;
+}
+
+.msg.user {
+  align-self: flex-end;
+  background: var(--user);
+  white-space: pre-wrap;
+}
+
+.msg.bot {
+  align-self: flex-start;
+  background: var(--surface);
+}
+
+.msg.thinking {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.msg.error {
+  background: var(--error-bg);
+  color: var(--error);
+}
+
+.msg a {
+  color: var(--accent);
+}
+
+.msg code {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, Menlo, monospace;
+  font-size: 13px;
+  background: #e5e7eb;
+  padding: 0 3px;
+  border-radius: 3px;
+}
+
+.msg pre {
+  white-space: pre-wrap;
+  background: #e5e7eb;
+  padding: 6px 8px;
+  border-radius: 6px;
+}
+
+.msg pre code {
+  background: none;
+  padding: 0;
+}
+
+.msg sup {
+  font-size: 11px;
+  line-height: 0;
+}
+
+.sources-label {
+  margin: 8px 0 2px !important;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.sources {
+  font-size: 13px;
+}
+
+.also {
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.also summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.notice {
+  font-size: 13px;
+  color: var(--notice);
+  background: var(--notice-bg);
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+
+.feedback {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.vote {
+  border: 1px solid var(--line);
+  background: var(--paper);
+  border-radius: 6px;
+  padding: 1px 8px;
+  font-size: 15px;
+}
+
+.vote:disabled {
+  opacity: 0.6;
+}
+
+.vote[aria-pressed="true"] {
+  opacity: 1;
+  border-color: var(--accent);
+}
+
+/* ---- composer and footer ---- */
+
+.composer {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--line);
+}
+
+.input {
+  flex: 1;
+  resize: none;
+  font: inherit;
+  color: var(--ink);
+  border: 1px solid #9ca3af;
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+.input:disabled {
+  background: var(--surface);
+}
+
+.send {
+  border: 0;
+  border-radius: 8px;
+  padding: 0 14px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.send:disabled {
+  background: #6b7280; /* 4.8:1 with white text */
+}
+
+.footer {
+  margin: 0;
+  padding: 6px 12px 8px;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* ---- small screens: the panel fills the window ---- */
+
+@media (max-width: 480px) {
+  .panel {
+    inset: 0;
+    width: auto;
+    height: auto;
+    max-height: none;
+    border-radius: 0;
+    border: 0;
+  }
+
+  .root:has(.panel:not([hidden])) .bubble {
+    display: none;
+  }
+}

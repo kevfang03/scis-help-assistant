@@ -60,6 +60,18 @@ class AnswerSettings(BaseModel):
     links_when_unavailable: int = 3
 
 
+class WebSettings(BaseModel):
+    host: str = "127.0.0.1"
+    port: int = 8765
+    allowed_origins: list[str] = []  # CORS for embedding on another local page; empty = off
+    rate_per_minute: int = Field(default=10, ge=1)  # per client IP
+    session_max_messages: int = Field(default=20, ge=1)
+    session_max_tokens: int = Field(default=40_000, ge=1_000)
+    session_idle_minutes: int = Field(default=60, ge=5)
+    max_sessions: int = Field(default=500, ge=10)  # oldest idle sessions evicted beyond this
+    desk_local_only: bool = True  # /desk and mode=desk only from 127.0.0.1/::1
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="SCIS_HELP_",
@@ -75,7 +87,7 @@ class Settings(BaseSettings):
     retrieval: RetrievalSettings = RetrievalSettings()
     llm: LlmSettings = LlmSettings()
     answer: AnswerSettings = AnswerSettings()
-    # payload 03 adds web
+    web: WebSettings = WebSettings()
 
 
 def load_settings() -> Settings:
