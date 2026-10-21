@@ -178,3 +178,5 @@ Buffer: 10-22/23 for the owner's live checks on both machines, the demo GIF and 
 **Status 2026-10-21:** 01 done (`1cfc08e`..`9dae68d`). Because of the deadline, 02 runs on `main` and 03 runs at the same time in its own worktree on branch `payload-03-web`; 03 merges `main` once 02 lands, and the owner merges 03 into `main`. 04 is written once 02's eval numbers exist.
 
 **Status 2026-10-21 (later):** 02 done on `main` (`229f28e`..`ce0f6fd`). 03 done on branch `payload-03-web` (`49e5890`, already merged with `main`); the owner merges it into `main`. Payload 04 written.
+
+**Status 2026-10-21 (payload 04):** done on `main`, not pushed: URLs verbatim in a source kept as plain code text (fix A), the `owner` eval split with the owner's 10 questions (fix B), MIT licence and metadata, 3-OS CI, GOVERNANCE.md, the full README. Owner split run once: hit@3 75%, answered 62%, not-covered accuracy 100%, citation hit 62%, groundedness 80% (20%). Dev rerun after fix A: answered 100%, not-covered accuracy 100%, citation hit 94%, groundedness 81% (19%). Left for the owner: the demo GIF, pushing, making the repo public.
