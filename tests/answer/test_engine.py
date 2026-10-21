@@ -46,7 +46,7 @@ def test_answered_numbers_sources_and_links_from_chunks():
         (3, "https://support.example.test/page-3/", True),
     ]
     assert answer.sources[0].title == "Page 2" and answer.sources[0].heading == "Steps"
-    assert llm.calls[0]["system"] == SYSTEM_PROMPT and llm.calls[0]["max_tokens"] == 600
+    assert llm.calls[0]["system"] == SYSTEM_PROMPT and llm.calls[0]["max_tokens"] == 1000
 
 
 def test_user_turn_has_mode_sources_without_urls_and_question():
@@ -126,7 +126,7 @@ def test_desk_mode_lists_also_retrieved_and_uses_desk_tokens():
     engine, retriever, llm = make(answered("Do [S2].", ["S2"]))
     answer = engine.ask("q", mode="desk")
     assert retriever.queries == [("q", "desk")]
-    assert llm.calls[0]["max_tokens"] == 900 and llm.calls[0]["user"].startswith("Mode: desk")
+    assert llm.calls[0]["max_tokens"] == 1400 and llm.calls[0]["user"].startswith("Mode: desk")
     assert [(s.n, s.used, s.url[-7:]) for s in answer.sources] == [
         (1, True, "page-2/"),
         (0, False, "page-1/"),

@@ -42,8 +42,9 @@ class LlmSettings(BaseModel):
     enabled: bool = True
     model: str = "claude-haiku-5-5"
     effort: Literal["low", "medium", "high"] = "low"
-    max_output_tokens: int = Field(default=600, ge=64, le=4096)
-    max_output_tokens_desk: int = Field(default=900, ge=64, le=4096)
+    # Thinking tokens count too: answers use about 50-550 tokens, so 600 sometimes cut them off.
+    max_output_tokens: int = Field(default=1000, ge=64, le=4096)
+    max_output_tokens_desk: int = Field(default=1400, ge=64, le=4096)
     daily_token_budget: int = Field(default=200_000, ge=1_000, le=10_000_000)
     timeout_seconds: int = Field(default=30, ge=5, le=120)
     # USD per million tokens for claude-haiku-5-5, prompts <= 100K (checked 2026-10-21).
