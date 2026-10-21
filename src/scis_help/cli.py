@@ -30,7 +30,7 @@ DEFAULT_QUESTIONS = Path("evals") / "questions.yaml"
 
 LINKS_ONLY_REASONS = {
     "budget": "the daily LLM budget is used up",
-    "no_key": f"no API key is saved. {SET_KEY_HINT}",
+    "no_key": "no API key is saved; run `uv run scis-help llm set-key`",
     "disabled": "the LLM is turned off in the settings",
     "refused": "the model declined to answer",
 }
