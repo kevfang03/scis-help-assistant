@@ -6,6 +6,8 @@ Precedence, highest first: CLI flags (applied by the caller), environment variab
 ``keyring``. Keep ``.env.example`` in step with every field.
 """
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -32,6 +34,27 @@ class RetrievalSettings(BaseModel):
     min_bm25: float = 5.0  # top BM25 score that counts as a lexical hit; tuned in 02
 
 
+class LlmSettings(BaseModel):
+    enabled: bool = True
+    model: str = "claude-haiku-5-5"
+    effort: Literal["low", "medium", "high"] = "low"
+    max_output_tokens: int = Field(default=600, ge=64, le=4096)
+    max_output_tokens_desk: int = Field(default=900, ge=64, le=4096)
+    daily_token_budget: int = Field(default=200_000, ge=1_000, le=10_000_000)
+    timeout_seconds: int = Field(default=30, ge=5, le=120)
+    # USD per million tokens for claude-haiku-5-5, prompts <= 100K (checked 2026-10-21).
+    input_usd_per_mtok: float = 0.10
+    output_usd_per_mtok: float = 0.50
+    cache_read_usd_per_mtok: float = 0.01
+    cache_write_usd_per_mtok: float = 0.125  # 5-minute cache writes
+
+
+class AnswerSettings(BaseModel):
+    help_contact: str = 'the help desk: https://support.cci.drexel.edu/ ("Talk to a person")'
+    max_message_chars: int = Field(default=500, ge=50, le=4000)
+    links_when_unavailable: int = 3
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="SCIS_HELP_",
@@ -45,7 +68,9 @@ class Settings(BaseSettings):
     crawl: CrawlSettings = CrawlSettings()
     index: IndexSettings = IndexSettings()
     retrieval: RetrievalSettings = RetrievalSettings()
-    # payload 02 adds llm and answer; payload 03 adds web
+    llm: LlmSettings = LlmSettings()
+    answer: AnswerSettings = AnswerSettings()
+    # payload 03 adds web
 
 
 def load_settings() -> Settings:
