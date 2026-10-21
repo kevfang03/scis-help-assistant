@@ -1,6 +1,8 @@
 import os
 import socket
 
+import keyring
+import keyring.backend
 import pytest
 
 
@@ -26,3 +28,31 @@ def no_network(monkeypatch):
     monkeypatch.setattr(socket.socket, "connect", refuse)
     monkeypatch.setattr(socket.socket, "connect_ex", refuse)
     monkeypatch.setattr(socket, "create_connection", refuse)
+
+
+class MemoryKeyring(keyring.backend.KeyringBackend):
+    """An in-memory keychain so tests never read or write the real one."""
+
+    priority = 1
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.passwords: dict[tuple[str, str], str] = {}
+
+    def get_password(self, service, username):
+        return self.passwords.get((service, username))
+
+    def set_password(self, service, username, password):
+        self.passwords[(service, username)] = password
+
+    def delete_password(self, service, username):
+        self.passwords.pop((service, username), None)
+
+
+@pytest.fixture(autouse=True)
+def memory_keyring():
+    previous = keyring.get_keyring()
+    fake = MemoryKeyring()
+    keyring.set_keyring(fake)
+    yield fake
+    keyring.set_keyring(previous)
