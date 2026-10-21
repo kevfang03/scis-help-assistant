@@ -11,6 +11,10 @@ Answer these in the architect session; the answers become decisions in ARCHITECT
 - [x] **API key.** **2026-10-18:** a new key for this project with its own spend limit. The owner stores it with `uv run scis-help llm set-key` (never in chat).
 - [x] **Git identity.** **2026-10-18:** the owner set `user.name` / `user.email` in this repo's local config.
 
+## Before payload 04 (asked 2026-10-21)
+- [ ] **URLs inside answer text.** Today the engine strips every URL from the model's text, even host names copied exactly from a source (e.g. a test site the VPN page tells you to open), so some answers read "go to ." The judge marked two answers down for this. **Recommended:** keep a URL or host name only if it appears **verbatim in one of the chunks given to the model**, render it as plain code text (not a clickable link), and strip all others. Clickable links still come only from index metadata, so the CLAUDE.md grounding rule holds; it gets one added sentence. Alternative: keep stripping everything.
+- [ ] **Owner-written eval split.** **Recommended:** instead of rewriting 10 drafted questions, the owner writes ~10 **new** ones (`split: owner`, `author: owner`) in students' real phrasing, from memory and in general terms, never from tickets, including 2 out-of-scope. They are run once after payload 04's fixes and reported as a third, untouched column in the README.
+
 ## Not blocking (answer before the payload that needs it)
 - [ ] **Name.** "SCIS Help Assistant" for the repo and README; the widget header says "Help Assistant (unofficial)". Assumed OK unless the owner objects.
 - [ ] **Licence.** MIT, as on enterprise-ai-ops-suite (payload 04).

@@ -65,7 +65,7 @@ tests/                   # mirrors src; fixtures/ holds small synthetic HTML in 
 - **Lexical:** BM25 over the same chunks (`bm25s`), because course codes, product names and error strings ("CCIREPO", "GlobalProtect", "CS 265") match better lexically.
 - **Fusion:** Reciprocal Rank Fusion (k = 60) of the two top-20 lists, then de-duplicate to at most 2 chunks per page; return top `k` (default 5) chunks.
 - **Store:** 690 pages → 1,027 chunks (measured 2026-10-21) → about 1.5 MB of vectors. Brute-force cosine (one numpy matmul) takes milliseconds. **No vector database** (Chroma, LanceDB, sqlite-vec would be more moving parts for no benefit at this scale). Chunk metadata in SQLite (stdlib).
-- **Confidence gate:** if the best dense cosine score is below `retrieval.min_score` (default 0.55, tuned on the dev split) **and** BM25 has no hit, skip the LLM and answer "not covered". Saves cost on out-of-scope questions.
+- **Confidence gate (tuned 2026-10-21, payload 02):** **dense only**. If the best dense cosine score is below `retrieval.min_score` (**0.65**), skip the LLM and answer "not covered". BM25 still helps ranking but is off for the gate (`min_bm25` set out of reach): on this corpus, real questions and off-topic ones both score BM25 about 3–7. On dev, the gate stops 2 of 4 out-of-scope questions; the model's own `not_covered` catches the rest (100% not-covered accuracy on dev and holdout).
 - **Index manifest** records the model id; `ask` refuses to run (config error) if the configured model differs from the index's.
 
 ### D2. Chunking (Decided, 2026-10-18)
@@ -83,7 +83,8 @@ Split each article at `h2`/`h3` boundaries; merge small sections and split long 
 
 ### D4. Answering (Decided, 2026-10-18)
 - **Model:** `claude-haiku-5-5` ($0.10 / $0.50 per million input/output tokens for prompts ≤ 100K; cache reads ~0.1× input; 5-minute cache writes 1.25×). Checked 2026-10-18 with the `claude-api` skill; re-verify in the payload.
-- **Request:** `output_config={"effort": "low", "format": <json schema>}` via `client.messages.parse(...)` with a pydantic model; no sampling parameters (Haiku 5.5 rejects non-default ones); `max_tokens` 600 (desk 900). Always check `stop_reason` (`refusal`, `max_tokens`) before reading output.
+- **Request:** `client.messages.create(...)` with `output_config={"effort": "low", "format": <json schema from the pydantic model>}`; the client parses and validates the JSON itself, after checking `stop_reason` (`refusal`, `max_tokens`) and recording usage. (`messages.parse()` validates inside the call, so a refusal or cut-off would raise before usage could be logged.) No sampling parameters (Haiku 5.5 rejects non-default ones). `max_tokens` **1,000** public / **1,400** desk: thinking tokens count toward it, and 600 cut off 2 of 20 dev answers. `anthropic` is pinned `<2` (2.0 appeared during payload 02; not evaluated).
+- **Measured (2026-10-21):** the system prompt is 1,882 tokens and is read from cache on every answer call. The whole payload 02 day (131 calls, including all eval runs) cost about $0.045.
 - **Prompt layout for caching:** one fixed system prompt (rules for both modes, the answer style, the clarify rule, the "not covered" rule, 2–3 short worked examples), marked `cache_control: ephemeral`. It must be ≥ 512 tokens or it silently won't cache. The **mode**, the retrieved sources (numbered `[S1]…[S5]` with title and text, no URLs) and the scrubbed question go in the user turn. Both modes share one cache entry.
 - **Output schema:**
   ```text
@@ -127,6 +128,16 @@ Applied to every user message before retrieval, the LLM and logs. Replaces, in o
 - `scis-help eval answers [--split ...] [--judge]`: runs the full engine. Reports: answered rate on in-scope, `not_covered` accuracy on out-of-scope, **citation hit** (a used source is an expected URL), and **groundedness**: with `--judge`, a Haiku judge rates each answer as fully supported / partly / unsupported by its cited chunks (structured output). Costs about one cent per run.
 - Results are written to `evals/results/<date>-<split>.json` (gitignored) and a Markdown table printed for the README.
 
+**Results (2026-10-21, payload 02; 30 drafted questions, 20 dev / 10 holdout)**
+| | hit@3 | Answered (in-scope) | Not-covered accuracy | Citation hit | Groundedness (partial) |
+|---|---|---|---|---|---|
+| Dev, first run | 94% | 94% | 100% | 88% | 40% (60%) |
+| Dev, after tuning | 94% | 100% | 100% | 94% | 88% (12%) |
+| Holdout (run once) | 75% | 88% | 100% | 75% | 57% (43%) |
+- Part of the dev groundedness jump is a judge change, not a model change: the judge stopped counting omissions as unsupported and treats SCIS and CCI as the same college. The README must say so.
+- Holdout misses: retrieval missed own-laptop printing (it found the Commons printing pages) and Echo360 playback. The holdout is now spent; no tuning against it.
+- **Next eval step (Proposed 2026-10-21, see OPEN_QUESTIONS):** the owner writes ~10 **new** questions in students' real phrasing (from memory, in general terms, never from tickets) as a second, untouched split, `owner`. It is run once, after payload 04's fixes, and reported next to dev and holdout. This replaces "rewrite 10 of the drafts", which would have mixed tuned and untuned questions.
+
 ### D10. Config (Decided, 2026-10-18)
 `pydantic-settings`, env prefix `SCIS_HELP_`, nested delimiter `__`, reads `.env`. Sections: `crawl` (base_url, delay_seconds, max_pages), `index` (embed_model, chunk_words), `retrieval` (k, min_score), `llm` (enabled, model, effort, max_output_tokens, daily_token_budget, timeout_seconds, prices), `answer` (help_contact), `web` (host, port, allowed_origins, rate limits, session caps). `.env.example` lists every key with a comment.
 
@@ -165,3 +176,5 @@ Per question: system prompt ~900 tokens (cached after the first call), 5 chunks 
 Buffer: 10-22/23 for the owner's live checks on both machines, the demo GIF and the eval run.
 
 **Status 2026-10-21:** 01 done (`1cfc08e`..`9dae68d`). Because of the deadline, 02 runs on `main` and 03 runs at the same time in its own worktree on branch `payload-03-web`; 03 merges `main` once 02 lands, and the owner merges 03 into `main`. 04 is written once 02's eval numbers exist.
+
+**Status 2026-10-21 (later):** 02 done on `main` (`229f28e`..`ce0f6fd`). 03 done on branch `payload-03-web` (`49e5890`, already merged with `main`); the owner merges it into `main`. Payload 04 written.
