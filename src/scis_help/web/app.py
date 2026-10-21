@@ -131,8 +131,9 @@ def create_app(settings: "Settings", *, engine: "Engine | None" = None) -> FastA
     limiter = RateLimiter(web.rate_per_minute)
     index_pages = _index_pages()
 
-    app = FastAPI(title="SCIS Help Assistant (unofficial)", docs_url=None, redoc_url=None)
-    app.openapi_url = None
+    app = FastAPI(
+        title="SCIS Help Assistant (unofficial)", docs_url=None, redoc_url=None, openapi_url=None
+    )
     if web.allowed_origins:
         app.add_middleware(
             CORSMiddleware,
