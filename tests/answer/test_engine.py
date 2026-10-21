@@ -125,6 +125,14 @@ def test_url_verbatim_in_a_source_is_kept_as_code():
     assert answer.text == "Open `http://neverssl.com`. Then ping `tux.cs.example.edu` [1]."
 
 
+def test_url_in_bold_is_kept_without_the_emphasis_markers():
+    chunks = [with_text(1, "Visit http://neverssl.com or http://guest.example.edu."), chunk(2)]
+    reply = answered("Visit **http://neverssl.com** or *http://guest.example.edu* [S1].", ["S1"])
+    engine, _, _ = make(reply, chunks=chunks)
+    answer = engine.ask("q")
+    assert answer.text == "Visit **`http://neverssl.com`** or *`http://guest.example.edu`* [1]."
+
+
 def test_invented_url_and_host_are_stripped():
     chunks = [with_text(1, "Open neverssl.com to test."), chunk(2)]
     reply = answered(

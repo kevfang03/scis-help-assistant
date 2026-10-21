@@ -31,11 +31,12 @@ _BARE_GROUP = re.compile(r"\[\s*(\d{1,2}(?:\s*[,;]\s*\d{1,2})*)\s*\](?!\()")
 # Markdown links lose their target ([label](url) -> label); links come from the index only.
 _MARKDOWN_LINK = re.compile(r"\[([^\]\n]+)\]\((?:https?://|www\.)[^)\s]*\)")
 # URLs with a scheme or www., and bare host names on common top-level domains (neverssl.com,
-# cs.drexel.edu/~user). Not after @ (emails) or inside a longer dotted word.
+# cs.drexel.edu/~user). Not after @ (emails) or inside a longer dotted word; markdown emphasis
+# (**url**, *url*) is not part of the URL.
 _URL_OR_HOST = re.compile(
-    r"(?<![\w@.-])(?:(?:https?://|www\.)[^\s)\]>\"'`]+"
+    r"(?<![\w@.-])(?:(?:https?://|www\.)[^\s)\]>\"'`*]+"
     r"|(?:[a-z0-9-]+\.)+(?:com|edu|org|net|gov|io|us|info|me|co|ai|dev|app)\b"
-    r"(?:/[^\s)\]>\"'`]*)?)",
+    r"(?:/[^\s)\]>\"'`*]*)?)",
     re.IGNORECASE,
 )
 _TRAILING = ".,;:!?"
