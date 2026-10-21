@@ -43,7 +43,7 @@ LINKS_ONLY_REASONS = {
 
 def _is_tty() -> bool:
     """Interactive prompts only when a person is typing (tests replace this)."""
-    return sys.stdin.isatty()
+    return sys.stdin.isatty() and sys.stdout.isatty()  # NUL reports isatty() on Windows
 
 
 def _read_line(prompt: str) -> str:

@@ -22,7 +22,9 @@ log = logging.getLogger(__name__)
 
 # [S1], [S1, S3], [S1][S2]: one bracket group of source ids.
 _CITATION_GROUP = re.compile(r"\[\s*(S\d+(?:\s*[,;]\s*S\d+)*)\s*\]", re.IGNORECASE)
-_SOURCE_ID = re.compile(r"S(\d+)", re.IGNORECASE)
+_SOURCE_ID = re.compile(r"S?(\d+)", re.IGNORECASE)
+# The model sometimes writes [2] or [1, 3] for [S2] / [S1, S3]; read those as source ids too.
+_BARE_GROUP = re.compile(r"\[\s*(\d{1,2}(?:\s*[,;]\s*\d{1,2})*)\s*\](?!\()")
 # Markdown links lose their target ([label](url) -> label); links come from the index only.
 _MARKDOWN_LINK = re.compile(r"\[([^\]\n]+)\]\((?:https?://|www\.)[^)\s]*\)")
 _BARE_URL = re.compile(r"(?:https?://|www\.)[^\s)\]>\"']+", re.IGNORECASE)
@@ -199,9 +201,9 @@ class Engine:
                 return _Validated("not_covered", "", [], None, "model")
             conversation.clarify_asked = True
             conversation.pending_question = question
-            lead = _strip_links(_CITATION_GROUP.sub("", model.answer)).strip()
-            text = f"{lead}\n\n{clarifying}" if lead and lead != clarifying else clarifying
-            return _Validated("clarify", text, [], clarifying, None)
+            # The question alone: the model's lead-in often asks the same thing again.
+            clarifying = _strip_links(_CITATION_GROUP.sub("", clarifying)).strip()
+            return _Validated("clarify", clarifying, [], clarifying, None)
 
         listed = [n for source_id in model.used_sources for n in _ids_in(source_id)]
 
@@ -209,7 +211,8 @@ class Engine:
             ids = [n for n in _ids_in(match[1]) if n in valid]
             return "[" + ", ".join(f"S{n}" for n in ids) + "]" if ids else ""
 
-        text = _CITATION_GROUP.sub(keep_valid, model.answer)
+        text = _BARE_GROUP.sub(lambda m: "[" + re.sub(r"(\d+)", r"S\1", m[1]) + "]", model.answer)
+        text = _CITATION_GROUP.sub(keep_valid, text)
         text = _strip_links(text).strip()
         cited = [n for match in _CITATION_GROUP.finditer(text) for n in _ids_in(match[1])]
         used: list[int] = []

@@ -248,3 +248,22 @@ def test_disabled_llm_through_the_real_client():
 
 def test_system_prompt_is_long_enough_to_cache():
     assert len(SYSTEM_PROMPT.split()) >= 450
+
+
+def test_bare_number_citations_are_read_as_source_ids():
+    engine, _, _ = make(answered("First [2]. Then [1, 3]. Bad [9].", ["S2", "1"]))
+    answer = engine.ask("q")
+    assert answer.text == "First [1]. Then [2][3]. Bad ."
+    assert [s.url[-7:] for s in answer.sources] == ["page-2/", "page-1/", "page-3/"]
+
+
+def test_clarify_text_is_just_the_question():
+    clarify = {
+        "status": "clarify",
+        "answer": "I can help. Which one?",
+        "used_sources": [],
+        "clarifying_question": "Mac or Windows?",
+    }
+    engine, _, _ = make(clarify)
+    answer = engine.ask("onedrive not syncing")
+    assert answer.text == "Mac or Windows?" == answer.clarifying_question
