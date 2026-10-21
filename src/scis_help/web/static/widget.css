@@ -107,8 +107,8 @@ button:disabled {
 .header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 10px 10px 14px;
+  gap: 6px;
+  padding: 10px 8px 10px 12px;
   background: var(--surface);
   border-bottom: 1px solid var(--line);
 }
@@ -117,17 +117,20 @@ button:disabled {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
 .title {
   margin: 0;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .badge {
+  flex-shrink: 0;
+  white-space: nowrap;
   font-size: 12px;
   padding: 1px 8px;
   border-radius: 999px;

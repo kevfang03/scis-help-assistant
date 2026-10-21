@@ -154,7 +154,7 @@
     el("div", { class: "header" }, [
       el("div", { class: "heading" }, [
         title,
-        MODE === "desk" ? el("span", { class: "badge", text: "Desk mode" }) : null,
+        MODE === "desk" ? el("span", { class: "badge", text: "Desk", title: "Desk mode" }) : null,
       ]),
       newChatButton,
       closeButton,
