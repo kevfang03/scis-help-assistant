@@ -1,8 +1,9 @@
-"""Command line: ``scis-help crawl | index | search | status``."""
+"""Command line: ``scis-help crawl | index | search | status | web``."""
 
 import argparse
 import sys
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 from pydantic import ValidationError
 
@@ -12,6 +13,10 @@ from scis_help.common.exitcodes import EXIT_CONFIG, EXIT_NETWORK, EXIT_NO_INDEX,
 from scis_help.common.logsetup import configure_logging
 from scis_help.index import store
 from scis_help.index.chunk import HEADING_SEPARATOR
+
+if TYPE_CHECKING:
+    from scis_help.answer.engine import Engine
+    from scis_help.index.retrieve import Retriever
 
 NO_INDEX_HINT = "Run `scis-help crawl`, then `scis-help index`."
 
@@ -109,6 +114,55 @@ def _status(args: argparse.Namespace, settings: Settings) -> int:
     return EXIT_OK
 
 
+def _web_engine(settings: Settings, retriever: "Retriever") -> "Engine":
+    from scis_help.answer.engine import Engine
+
+    return Engine(settings, retriever=retriever)
+
+
+def _web(args: argparse.Namespace, settings: Settings) -> int:
+    import threading
+    import webbrowser
+
+    import uvicorn
+
+    from scis_help.index.retrieve import IndexMissing, Retriever
+    from scis_help.web import app as web_app
+
+    host = args.host or settings.web.host
+    port = args.port or settings.web.port
+    if not 1 <= port <= 65535:
+        print("--port must be between 1 and 65535.", file=sys.stderr)
+        return EXIT_CONFIG
+    try:
+        retriever = Retriever.load(settings)
+    except IndexMissing as error:
+        print(f"No usable index: {error}. {NO_INDEX_HINT}", file=sys.stderr)
+        return EXIT_NO_INDEX
+    app = web_app.create_app(settings, engine=_web_engine(settings, retriever))
+
+    llm = web_app._llm_state(settings)
+    if llm == "no_key":
+        print(
+            "Note: no API key saved, so answers will be links only."
+            " Run `uv run scis-help llm set-key` to add one."
+        )
+    elif llm == "disabled":
+        print("Note: the LLM is turned off in the settings, so answers will be links only.")
+    if not web_app.is_loopback(host) and host != "localhost":
+        print(
+            f"Warning: listening on {host}. The app has no authentication: anyone who can reach"
+            " this address can use it and spend the API budget."
+        )
+    url = f"http://{f'[{host}]' if ':' in host else host}:{port}/"
+    print(f"Open {url} (Ctrl+C to stop)")
+    if not args.no_browser:
+        threading.Timer(1.0, webbrowser.open, args=(url,)).start()
+    # No access log: it would record client IPs.
+    uvicorn.run(app, host=host, port=port, access_log=False, log_level="warning")
+    return EXIT_OK
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="scis-help",
@@ -134,6 +188,12 @@ def _parser() -> argparse.ArgumentParser:
 
     status = commands.add_parser("status", help="data folder, pages and index (no network)")
     status.set_defaults(handler=_status)
+
+    web = commands.add_parser("web", help="start the local web app with the chat widget")
+    web.add_argument("--host", help="address to listen on (default 127.0.0.1)")
+    web.add_argument("--port", type=int, help="port (default 8765)")
+    web.add_argument("--no-browser", action="store_true", help="don't open a browser")
+    web.set_defaults(handler=_web)
     return parser
 
 
