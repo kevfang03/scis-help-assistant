@@ -3,7 +3,11 @@
 # expect: answered (expected_urls lists the right pages) or not_covered.
 # split: dev (tuning) or holdout (run once for the README). The split was drawn once with
 # random.Random(2026), stratified: 16 + 4 dev and 8 + 2 holdout. Do not move questions.
-# author: draft (worker) or owner; the owner rewrites about 10 in real phrasing later.
+# split: owner (o01-o10): written by the owner on 2026-10-21, word for word, run once after
+# payload 04's fixes. `eval --split all` leaves them out unless --include-owner is passed.
+# Their expected pages were labelled by reading pages.sqlite (title/text LIKE queries and the
+# pages themselves), not with the retriever.
+# author: draft (worker) or owner.
 - id: q01
   question: the vpn keeps asking me to approve on my phone and then just says login failed
   expected_urls:
@@ -216,3 +220,77 @@
   expect: not_covered
   split: holdout
   author: draft
+- id: o01
+  question: my laptop keeps dropping off the wifi on the 10th floor, what do I do
+  expected_urls:
+  - https://support.cci.drexel.edu/getting-connected/connecting-to-dragonfly3/settings-dns-settings-to-defaultflushing-dns-cache-to-fix-dragonfly3-connectivity-issues/
+  - https://support.cci.drexel.edu/getting-connected/connecting-to-dragonfly3/
+  expect: answered
+  split: owner
+  author: owner
+- id: o02
+  question: how do I connect to the linux server from home, it keeps timing out
+  expected_urls:
+  - https://support.cci.drexel.edu/platforms-resources/tux/tux-account-information/
+  - https://support.cci.drexel.edu/service-catalog/network-connectivity/vpn/
+  expect: answered
+  split: owner
+  author: owner
+- id: o03
+  question: I forgot my password for the CS linux account, how do I reset it
+  expected_urls:
+  - https://support.cci.drexel.edu/platforms-resources/oracle-and-linux-servers/oracle-and-linuxccidrexel/
+  - https://support.cci.drexel.edu/software-courses/office-365-or-office365/access-to-drexel-connect-mfa-help-password-reset-and-mfa-reset/
+  expect: answered
+  split: owner
+  author: owner
+- id: o04
+  question: can I print from my own laptop to the lab printers
+  expected_urls:
+  - https://support.cci.drexel.edu/printing/printing-cci-commons/
+  - https://support.cci.drexel.edu/printing/cci-copiers/printing-papercut/adding-papercut-printers-non-drexel-computer/
+  expect: answered
+  split: owner
+  author: owner
+- id: o05
+  question: the VCL reservation says it failed, how do I fix it
+  expected_urls:
+  - https://support.cci.drexel.edu/platforms-resources/virtual-computing-lab/virtual-computing-lab-vcl/
+  expect: answered
+  split: owner
+  author: owner
+- id: o06
+  question: how do I get access to a lab or building after hours
+  expected_urls:
+  - https://support.cci.drexel.edu/service-catalog/building-access/dragoncard-access/
+  - https://support.cci.drexel.edu/scis-spaces/cardaccess/
+  expect: answered
+  split: owner
+  author: owner
+- id: o07
+  question: how do I borrow a laptop or equipment from the commons
+  expected_urls:
+  - https://support.cci.drexel.edu/service-catalog/device-and-computer-support/loaner-equipment/
+  expect: answered
+  split: owner
+  author: owner
+- id: o08
+  question: I need to book a room and AV for a student org event, where do I start
+  expected_urls:
+  - https://support.cci.drexel.edu/scis-spaces/reserving-a-meeting-room-in-cci-as-a-student/
+  - https://support.cci.drexel.edu/service-catalog/email-and-calendar/joan-room-booking/
+  expect: answered
+  split: owner
+  author: owner
+- id: o09
+  question: where can I get cheap lunch near campus
+  expected_urls: []
+  expect: not_covered
+  split: owner
+  author: owner
+- id: o10
+  question: how do I change my major
+  expected_urls: []
+  expect: not_covered
+  split: owner
+  author: owner

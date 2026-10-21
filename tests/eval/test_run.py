@@ -5,6 +5,7 @@ import pytest
 from scis_help.common.config import LlmSettings
 from scis_help.eval.run import (
     AnswerRow,
+    EvalQuestion,
     QuestionsError,
     RetrievalRow,
     answer_metrics,
@@ -72,10 +73,41 @@ def test_bad_questions_files(tmp_path):
         load_questions(tmp_path / "missing.yaml")
 
 
+def q(id, split):
+    return EvalQuestion(id, "x", ("https://x.test/",), "answered", split)
+
+
+def test_select_keeps_the_owner_split_out_of_all():
+    questions = [q("d", "dev"), q("h", "holdout"), q("o", "owner")]
+    assert [x.id for x in select(questions, "owner")] == ["o"]
+    assert [x.id for x in select(questions, "dev")] == ["d"]
+    assert [x.id for x in select(questions, "all")] == ["d", "h"]
+    assert [x.id for x in select(questions, "all", include_owner=True)] == ["d", "h", "o"]
+
+
+def test_owner_split_loads_and_unknown_split_fails(tmp_path):
+    path = tmp_path / "q.yaml"
+    path.write_text(
+        "- id: o1\n  question: x\n  expect: not_covered\n  split: owner\n  author: owner\n",
+        encoding="utf-8",
+    )
+    [loaded] = load_questions(path)
+    assert loaded.split == "owner" and loaded.author == "owner" and not loaded.in_scope
+    path.write_text(
+        "- id: x\n  question: x\n  expect: not_covered\n  split: test\n", encoding="utf-8"
+    )
+    with pytest.raises(QuestionsError, match="dev, holdout or owner"):
+        load_questions(path)
+
+
 def test_committed_questions_file_shape():
     questions = load_questions(QUESTIONS)
-    assert len(questions) == 30
-    assert sum(q.in_scope for q in questions) == 24
+    assert len(questions) == 40
+    assert sum(q.in_scope for q in questions) == 32
     assert len(select(questions, "dev")) == 20 and len(select(questions, "holdout")) == 10
+    owner = select(questions, "owner")
+    assert [q.id for q in owner] == [f"o{n:02d}" for n in range(1, 11)]
+    assert all(q.author == "owner" for q in owner) and sum(q.in_scope for q in owner) == 8
+    assert len(select(questions, "all")) == 30
     for q in questions:
         assert all(url.startswith("https://support.cci.drexel.edu/") for url in q.expected_urls)

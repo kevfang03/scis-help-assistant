@@ -6,7 +6,8 @@
   Answered rate (in-scope), ``not_covered`` accuracy (out-of-scope), citation hit, tokens and
   cost; with a judge, groundedness of each answer against the chunks it cited.
 
-Tune on the dev split only; run holdout once.
+Tune on the dev split only; run holdout once. The owner split (questions the owner wrote) is
+run once too, and ``all`` leaves it out unless asked.
 """
 
 import json
@@ -26,8 +27,9 @@ from scis_help.index.chunk import HEADING_SEPARATOR
 from scis_help.index.retrieve import Retriever
 from scis_help.llm.client import LlmClient, LlmFailed, LlmUnavailable
 
-Split = Literal["dev", "holdout", "all"]
-SPLITS = ("dev", "holdout", "all")
+Split = Literal["dev", "holdout", "owner", "all"]
+SPLITS = ("dev", "holdout", "owner", "all")
+_QUESTION_SPLITS = ("dev", "holdout", "owner")
 
 # Rough tokens per question, for the cost shown before a paid run.
 _ANSWER_INPUT_TOKENS = 3_000
@@ -46,7 +48,7 @@ class EvalQuestion:
     question: str
     expected_urls: tuple[str, ...]
     expect: Literal["answered", "not_covered"]
-    split: Literal["dev", "holdout"]
+    split: Literal["dev", "holdout", "owner"]
     author: str = "draft"
 
     @property
@@ -80,8 +82,8 @@ def load_questions(path: Path) -> list[EvalQuestion]:
             raise QuestionsError(f"{where}: missing {error.args[0]!r}") from error
         if question.expect not in ("answered", "not_covered"):
             raise QuestionsError(f"{where}: expect must be answered or not_covered")
-        if question.split not in ("dev", "holdout"):
-            raise QuestionsError(f"{where}: split must be dev or holdout")
+        if question.split not in _QUESTION_SPLITS:
+            raise QuestionsError(f"{where}: split must be dev, holdout or owner")
         if question.in_scope and not question.expected_urls:
             raise QuestionsError(f"{where}: an answered question needs expected_urls")
         if question.id in seen:
@@ -91,8 +93,13 @@ def load_questions(path: Path) -> list[EvalQuestion]:
     return questions
 
 
-def select(questions: Iterable[EvalQuestion], split: Split) -> list[EvalQuestion]:
-    return [q for q in questions if split == "all" or q.split == split]
+def select(
+    questions: Iterable[EvalQuestion], split: Split, *, include_owner: bool = False
+) -> list[EvalQuestion]:
+    """The questions of ``split``; ``all`` excludes the owner split unless ``include_owner``."""
+    if split == "all":
+        return [q for q in questions if include_owner or q.split != "owner"]
+    return [q for q in questions if q.split == split]
 
 
 def _share(part: int, whole: int) -> float | None:

@@ -333,3 +333,33 @@ def test_eval_bad_questions_file_exits_2(small_index, tmp_path, capsys):
     bad.write_text("- id: q1\n  question: x\n  expect: answered\n  split: dev\n", encoding="utf-8")
     assert cli.main(["eval", "retrieval", "--questions", str(bad)]) == EXIT_CONFIG
     assert "needs expected_urls" in capsys.readouterr().err
+
+
+OWNER_YAML = """\
+- id: o01
+  question: pizza nearby
+  expected_urls: []
+  expect: not_covered
+  split: owner
+  author: owner
+"""
+
+
+def test_eval_owner_split_is_empty_until_written_and_kept_out_of_all(small_index, tmp_path, capsys):
+    questions = tmp_path / "q.yaml"
+    questions.write_text(QUESTIONS_YAML, encoding="utf-8")
+    assert cli.main(["eval", "retrieval", "--split", "owner", "--questions", str(questions)]) == 0
+    assert capsys.readouterr().out.strip() == "no questions in split owner"
+
+    questions.write_text(QUESTIONS_YAML + OWNER_YAML, encoding="utf-8")
+    assert cli.main(["eval", "retrieval", "--split", "owner", "--questions", str(questions)]) == 0
+    out = capsys.readouterr().out
+    assert "o01  not_covered" in out and "q01" not in out and "| owner | 0 |" in out
+
+    assert cli.main(["eval", "retrieval", "--split", "all", "--questions", str(questions)]) == 0
+    out = capsys.readouterr().out
+    assert "q01" in out and "q02" in out and "o01" not in out
+
+    args = ["eval", "retrieval", "--split", "all", "--include-owner", "--questions"]
+    assert cli.main([*args, str(questions)]) == 0
+    assert "o01  not_covered" in capsys.readouterr().out

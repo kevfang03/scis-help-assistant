@@ -246,10 +246,15 @@ def _eval_setup(args: argparse.Namespace, settings: Settings):
     from scis_help.index.retrieve import IndexMissing, Retriever
 
     try:
-        questions = select(load_questions(args.questions), args.split)
+        questions = select(
+            load_questions(args.questions), args.split, include_owner=args.include_owner
+        )
     except QuestionsError as error:
         print(f"Eval questions: {error}", file=sys.stderr)
         return None, None, EXIT_CONFIG
+    if not questions:
+        print(f"no questions in split {args.split}")
+        return None, None, EXIT_OK
     try:
         retriever = Retriever.load(settings)
     except IndexMissing as error:
@@ -516,7 +521,10 @@ def _parser() -> argparse.ArgumentParser:
         ("answers", _eval_answers, "the full engine (paid; asks first)"),
     ):
         sub = eval_commands.add_parser(name, help=help_text)
-        sub.add_argument("--split", choices=("dev", "holdout", "all"), default="dev")
+        sub.add_argument("--split", choices=("dev", "holdout", "owner", "all"), default="dev")
+        sub.add_argument(
+            "--include-owner", action="store_true", help="--split all also runs the owner split"
+        )
         sub.add_argument("--questions", type=Path, default=DEFAULT_QUESTIONS, metavar="PATH")
         if name == "answers":
             sub.add_argument("--judge", action="store_true", help="rate groundedness with Haiku")
