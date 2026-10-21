@@ -136,7 +136,7 @@ Applied to every user message before retrieval, the LLM and logs. Replaces, in o
 | Holdout (run once) | 75% | 88% | 100% | 75% | 57% (43%) |
 - Part of the dev groundedness jump is a judge change, not a model change: the judge stopped counting omissions as unsupported and treats SCIS and CCI as the same college. The README must say so.
 - Holdout misses: retrieval missed own-laptop printing (it found the Commons printing pages) and Echo360 playback. The holdout is now spent; no tuning against it.
-- **Next eval step (Proposed 2026-10-21, see OPEN_QUESTIONS):** the owner writes ~10 **new** questions in students' real phrasing (from memory, in general terms, never from tickets) as a second, untouched split, `owner`. It is run once, after payload 04's fixes, and reported next to dev and holdout. This replaces "rewrite 10 of the drafts", which would have mixed tuned and untuned questions.
+- **Next eval step (Decided 2026-10-21):** the owner writes ~10 **new** questions in students' real phrasing (from memory, in general terms, never from tickets) as a second, untouched split, `owner`. It is run once, after payload 04's fixes, and reported next to dev and holdout. This replaces "rewrite 10 of the drafts", which would have mixed tuned and untuned questions.
 
 ### D10. Config (Decided, 2026-10-18)
 `pydantic-settings`, env prefix `SCIS_HELP_`, nested delimiter `__`, reads `.env`. Sections: `crawl` (base_url, delay_seconds, max_pages), `index` (embed_model, chunk_words), `retrieval` (k, min_score), `llm` (enabled, model, effort, max_output_tokens, daily_token_budget, timeout_seconds, prices), `answer` (help_contact), `web` (host, port, allowed_origins, rate limits, session caps). `.env.example` lists every key with a comment.
