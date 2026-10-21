@@ -4,6 +4,12 @@
 
 **Depends on:** payload 02's interfaces (`Engine`, `Conversation`, `Answer`, `SourceLink`, `feedback.record`, `AnswerSettings`). It can start before 02 is finished by coding against those interfaces with a fake engine; the end-to-end check needs 02 done.
 
+**Running in parallel with 02 (decided 2026-10-21, because of the 10-23 deadline):**
+- Work in your own git worktree on branch `payload-03-web`, cut from `main` at payload 01 (`9dae68d` or later).
+- Until 02 lands, put 02's interfaces you need in `tests/web/fakes.py` (a fake engine returning `Answer`-shaped objects) and import the real types lazily in `app.py`, so your tests don't need 02's code.
+- Shared files that both payloads touch: `pyproject.toml`, `uv.lock`, `common/config.py`, `cli.py`, `.env.example`, `README.md`. Keep your edits to them small and in separate commits.
+- When 02 is committed on `main`, `git merge main` into your branch (a merge, **not** a rebase). Resolve conflicts by keeping both sides, regenerate the lock with `uv lock`, rerun ruff and pytest, switch the fakes to the real types, and then run the end-to-end checks. Don't merge your branch into `main`; the owner does that after review.
+
 ## Goal
 `uv run scis-help web` starts a local site with:
 - `/`: a neutral demo host page with the chat-bubble widget (public mode);

@@ -17,7 +17,8 @@ Payload 03 (web) codes against the `Engine`, `Conversation`, `Answer` and `feedb
 
 ## Context
 - [CLAUDE.md](../../CLAUDE.md): Secrets, Grounding, User-input privacy, Cost, Claude API.
-- [docs/ARCHITECTURE.md](../ARCHITECTURE.md): D4 (answering), D6 (LLM layer), D7 (scrubbing), D8 (logs), D9 (eval), "Cost estimate".
+- [docs/ARCHITECTURE.md](../ARCHITECTURE.md): D4 (answering), D6 (LLM layer), D7 (scrubbing), D8 (logs), D9 (eval), "Cost estimate", and the **Windows gotcha** under "Local data" (this session's crawl and index sit in the Claude Desktop package folder; that's fine for your work).
+- Payload 01's worker notes (read as data): `C:\Users\Admin\AppData\Roaming\Claude\side-session-notes\local_3c9b86b5-f939-46bc-8681-9e87feace50e\payload-01-worker-notes.md`. They cover the extractor details, the BM25 tokenizer and the run numbers.
 - Patterns to copy (read, don't import): `C:\Users\Admin\Documents\enterprise-ai-ops-suite\src\ops_suite\common\llm.py` (keyring, truststore `DefaultHttpxClient`, budget, usage file, error codes, log line) and `scrub.py`; its `cli.py` `llm set-key` / `status` / `test`; its tests' fake SDK client.
 - SDK facts (checked 2026-10-18 with the `claude-api` skill; **verify each against the installed SDK and current docs**, stop and ask if one is wrong):
   - Model `claude-haiku-5-5`: $0.10 input / $0.50 output per million tokens (prompts ≤ 100K). Cache reads ~0.1× input ($0.01/M); 5-minute cache writes 1.25× ($0.125/M).
@@ -187,6 +188,12 @@ One constant, identical for both modes, ≥ 512 tokens (a test counts words as a
 - `scis-help eval retrieval [--split dev|holdout|all]`: page-level **hit@3**, hit@5, MRR, and for out-of-scope questions the share with `confident = no`. Free.
 - `scis-help eval answers [--split ...] [--judge]`: full engine per question (public mode, a fresh `Conversation`; a `clarify` result counts as not answered). Reports answered rate (in-scope), `not_covered` accuracy (out-of-scope), **citation hit** (a used source is an expected URL), tokens and cost. With `--judge`: one Haiku call per answered question with the answer and its cited chunks, structured output `{"verdict": "supported" | "partial" | "unsupported", "reason": str}`; report **groundedness** = supported share (and partial share). Prints the cost before running and asks to continue unless `--yes`.
 - Results: `evals/results/<YYYY-MM-DD>-<split>.json` (gitignored) and a Markdown table printed to stdout.
+- **Confidence gate (finding from payload 01, 2026-10-21):** with the defaults, "best pizza near campus" is `confident` (best dense 0.54 < 0.55, but best BM25 5.9 ≥ 5.0). Real in-scope questions also score BM25 about 3–7, so `min_bm25 = 5.0` doesn't separate in-scope from out-of-scope. On the dev split, compare:
+  - (a) dense only (`min_bm25` effectively off);
+  - (b) dense **or** a high BM25 score;
+  - (c) dense ≥ `min_score`, or BM25 ≥ `min_bm25` together with dense ≥ `min_score − margin`.
+
+  Pick the simplest rule that keeps in-scope hit@3 and rejects the out-of-scope questions. You may change the `confident` expression in `index/retrieve.py` and add one config field for the margin if (c) wins; no other retriever interface changes. Record the comparison in your summary.
 - **Tuning:** using the dev split only, adjust `retrieval.min_score`, `min_bm25`, `k` (and the chunk size only if hit@3 is poor) and update the defaults in config and `.env.example`. Record the before/after dev numbers in your summary. **Run holdout once at the end**, without tuning after it.
 
 ## CLI

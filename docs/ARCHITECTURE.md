@@ -15,7 +15,8 @@ SCIS Help Assistant, an unofficial student project. A help chat like the popups 
 ## The source site (checked 2026-10-18)
 - Host: **`https://support.cci.drexel.edu/`** is live and still the current host after the SCIS rename. Page titles end "· CCI Technology Services and Support"; the body mixes CCI and SCIS naming.
 - Platform: a static Hugo site with the Docsy theme. Server-rendered HTML; no JavaScript needed to read it.
-- Main content: `<article class="td-article">` inside `<main id="main">`. The title is in `<title>` (strip the " · CCI Technology Services and Support" suffix) and the article `<h1>`.
+- Main content: `<article class="td-article">` inside `<main id="main">`. The title is in `<title>` (strip the " · CCI Technology Services and Support" suffix) and the article `<h1>`. Also removed: the "Still stuck?" footer (`section.td-help`) and section-index widgets (`.td-views`, `.td-filter`). Many older pages use `h4`/`<b>` as headings; those stay plain lines.
+- Two sitemap URLs (`/software-courses/discord/`, `/service-catalog/educational-services/tux/`) are JavaScript-redirect stubs with no content. They fail on every crawl, which is expected.
 - `sitemap.xml`: **692 URLs** with `<lastmod>`. Top sections by count: remote-conferencing-and-class-capture 208, software-courses 181, platforms-resources 69, getting-connected 65, canvas 52, service-catalog 42, other-it-resources 29, printing 25, scis-spaces 14, plus a few root-level pages.
 - `robots.txt`: **404** (no rules published). We still crawl politely (below) and re-check robots.txt on every crawl.
 - Public help-desk contact on the home page ("Talk to a person"): the CCI Commons help desk, phone, email, room and hours. The fallback message points to the home page rather than hard-coding these (see OPEN_QUESTIONS).
@@ -55,13 +56,15 @@ tests/                   # mirrors src; fixtures/ holds small synthetic HTML in 
 
 `user_cache_dir("scis-help")`: `models/` for the fastembed model download (~70 MB).
 
+**Windows gotcha (found 2026-10-21):** Claude Desktop is a packaged (MSIX) app, so `%LOCALAPPDATA%` writes from its sessions land in `%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Local\scis-help`, not in the real `%LOCALAPPDATA%\scis-help` that the owner's own terminal uses. Claude sessions and the owner's terminal keep **separate** crawls, indexes and logs; the owner runs `crawl` and `index` once in their own terminal. Keyring (Windows Credential Manager) is shared, so a key saved from the owner's terminal is visible to Claude sessions.
+
 ## Decisions
 
 ### D1. Embeddings and index: local fastembed + BM25 hybrid, brute-force numpy (Decided, 2026-10-18)
 - **Embedder:** `fastembed` with `BAAI/bge-small-en-v1.5` (384 dimensions, ~70 MB ONNX, CPU, no PyTorch). Free, offline after the first download, wheels for Windows and macOS. Use `query_embed` for questions and `passage_embed` for chunks (bge's query prefix is handled for us). Anthropic has no embedding endpoint; a paid embedding API would add a second vendor, a second key and per-crawl cost for no gain at this size.
 - **Lexical:** BM25 over the same chunks (`bm25s`), because course codes, product names and error strings ("CCIREPO", "GlobalProtect", "CS 265") match better lexically.
 - **Fusion:** Reciprocal Rank Fusion (k = 60) of the two top-20 lists, then de-duplicate to at most 2 chunks per page; return top `k` (default 5) chunks.
-- **Store:** ~700 pages → a few thousand chunks → a few MB of vectors. Brute-force cosine (one numpy matmul) takes milliseconds. **No vector database** (Chroma, LanceDB, sqlite-vec would be more moving parts for no benefit at this scale). Chunk metadata in SQLite (stdlib).
+- **Store:** 690 pages → 1,027 chunks (measured 2026-10-21) → about 1.5 MB of vectors. Brute-force cosine (one numpy matmul) takes milliseconds. **No vector database** (Chroma, LanceDB, sqlite-vec would be more moving parts for no benefit at this scale). Chunk metadata in SQLite (stdlib).
 - **Confidence gate:** if the best dense cosine score is below `retrieval.min_score` (default 0.55, tuned on the dev split) **and** BM25 has no hit, skip the LLM and answer "not covered". Saves cost on out-of-scope questions.
 - **Index manifest** records the model id; `ask` refuses to run (config error) if the configured model differs from the index's.
 
@@ -75,7 +78,8 @@ Split each article at `h2`/`h3` boundaries; merge small sections and split long 
 - Incremental: skip a page when its sitemap `lastmod` ≤ stored `lastmod`; `--full` refetches all. Pages that left the sitemap are deleted from `pages.sqlite`.
 - Uses `httpx` with the truststore SSL context. Retries 2× on 5xx/timeouts with back-off; a 429 stops the crawl.
 - Stores extracted text, URL, title, section (first path segment), lastmod and a content hash. No raw HTML is stored.
-- A full crawl at 1.5 s/page takes about 17 minutes; re-crawls are fast because of `lastmod`.
+- A full crawl takes about 23 minutes (1.5 s delay plus response time; measured 2026-10-21). A re-crawl with nothing changed takes seconds because of `lastmod`.
+- Redirects are followed by hand: each hop is throttled, and an off-host redirect is never requested.
 
 ### D4. Answering (Decided, 2026-10-18)
 - **Model:** `claude-haiku-5-5` ($0.10 / $0.50 per million input/output tokens for prompts ≤ 100K; cache reads ~0.1× input; 5-minute cache writes 1.25×). Checked 2026-10-18 with the `claude-api` skill; re-verify in the payload.
@@ -142,7 +146,7 @@ class Document:
 class Source(Protocol):
     name: str
     audience: Literal["public", "desk"]
-    def iter_documents(self, *, full: bool = False) -> Iterator[Document]: ...
+    def iter_documents(self) -> Iterator[Document]: ...   # reads the local store; crawling is separate
 ```
 Retrieval filters by audience: public mode sees only `public` chunks; desk mode sees both.
 
@@ -159,3 +163,5 @@ Per question: system prompt ~900 tokens (cached after the first call), 5 chunks 
 | 03 | FastAPI web app + Shadow-DOM widget + demo/desk pages + feedback + rate/session caps | 02's `Engine` interface (can start in parallel once 02's interfaces are fixed) | 10-20/21 |
 | 04 | README (problem, architecture diagram, eval table, governance, demo GIF slot), MIT licence, GitHub Actions (ruff + pytest) + badge, public-readiness check | 01–03 | 10-21/22 |
 Buffer: 10-22/23 for the owner's live checks on both machines, the demo GIF and the eval run.
+
+**Status 2026-10-21:** 01 done (`1cfc08e`..`9dae68d`). Because of the deadline, 02 runs on `main` and 03 runs at the same time in its own worktree on branch `payload-03-web`; 03 merges `main` once 02 lands, and the owner merges 03 into `main`. 04 is written once 02's eval numbers exist.
