@@ -134,6 +134,7 @@ def create_app(settings: "Settings", *, engine: "Engine | None" = None) -> FastA
     app = FastAPI(
         title="SCIS Help Assistant (unofficial)", docs_url=None, redoc_url=None, openapi_url=None
     )
+    app.state.engine = engine
     if web.allowed_origins:
         app.add_middleware(
             CORSMiddleware,

@@ -3,10 +3,20 @@ import threading
 import uuid
 
 import pytest
+from fastapi.testclient import TestClient
 
-from scis_help.web.app import is_loopback
-from tests.web.conftest import REMOTE
-from tests.web.fakes import DRIVE_URL, VPN_URL, FakeEngine, SourceLink, answered, make_answer
+from scis_help.feedback import feedback
+from scis_help.web.app import create_app, is_loopback
+from tests.web.conftest import LOCAL, REMOTE
+from tests.web.fakes import (
+    DRIVE_URL,
+    VPN_URL,
+    FakeEngine,
+    SourceLink,
+    answered,
+    make_answer,
+    web_settings,
+)
 
 
 def sid() -> str:
@@ -197,6 +207,7 @@ def test_feedback_once_only(make_client, feedback_log):
     assert len(feedback_log) == 1
     answer, helpful = feedback_log[0]
     assert answer.answer_id == answer_id and helpful is True
+    assert feedback.summary()["up"] == 1  # written by the real feedback store
     assert client.post("/api/feedback", json=rate | {"helpful": False}).status_code == 404
     assert len(feedback_log) == 1
 
@@ -220,6 +231,18 @@ def test_feedback_bad_input_is_400(make_client):
 def test_health(make_client):
     client, _ = make_client()
     assert client.get("/api/health").json() == {"ok": True, "index_pages": 0, "llm": "no_key"}
+
+
+def test_health_llm_state_follows_key_and_setting(make_client):
+    from scis_help.llm.keys import set_api_key
+
+    set_api_key("sk-ant-test-0000")  # the in-memory test keyring
+    client, _ = make_client()
+    assert client.get("/api/health").json()["llm"] == "ready"
+    settings = web_settings()
+    settings.llm.enabled = False
+    disabled = TestClient(create_app(settings, engine=FakeEngine()), client=LOCAL)
+    assert disabled.get("/api/health").json()["llm"] == "disabled"
 
 
 def test_health_counts_index_pages(make_client):

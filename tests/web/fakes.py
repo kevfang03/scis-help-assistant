@@ -1,8 +1,5 @@
-"""Test doubles for the web app: payload 02's answer types (same shapes) and a scripted engine.
-
-Until payload 02 lands on main, these stand in for ``scis_help.answer.models`` and
-``scis_help.answer.engine.Engine``; the app only touches the fields listed in 02's interfaces.
-"""
+"""Test doubles for the web app: a scripted engine that returns payload 02's real ``Answer``s
+and does the ``Conversation`` bookkeeping the real engine does, plus answer builders."""
 
 import threading
 import uuid
@@ -10,61 +7,19 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Literal
 
-Mode = Literal["public", "desk"]
-Status = Literal["answered", "clarify", "not_covered", "links_only"]
+from scis_help.answer.models import Answer, Conversation, Mode, SourceLink
+from scis_help.common.config import AnswerSettings, Settings, WebSettings
+from scis_help.llm.client import LlmUsage
 
 VPN_URL = "https://support.example.test/getting-connected/example-vpn/"
 PRINT_URL = "https://support.example.test/printing/lab-printers/"
 DRIVE_URL = "https://support.example.test/getting-connected/shared-drive/"
 HELP_CONTACT = "the help desk: https://support.example.test/ (Talk to a person)"
+Status = Literal["answered", "clarify", "not_covered", "links_only"]
 
 
-@dataclass(frozen=True, slots=True)
-class SourceLink:
-    n: int
-    url: str
-    title: str
-    heading: str
-    used: bool
-
-
-@dataclass(frozen=True, slots=True)
-class LlmUsage:
-    model: str
-    input_tokens: int
-    output_tokens: int
-    cache_read_tokens: int
-    cache_write_tokens: int
-    cost_usd: float
-
-
-@dataclass(frozen=True, slots=True)
-class Answer:
-    answer_id: str
-    status: Status
-    text: str
-    sources: list[SourceLink]
-    clarifying_question: str | None
-    scrub_notice: bool
-    question_scrubbed: str
-    mode: Mode
-    reason: str | None
-    usage: LlmUsage | None
-
-
-@dataclass
-class Conversation:
-    pending_question: str | None = None
-    clarify_asked: bool = False
-    messages: int = 0
-    tokens: int = 0
-
-
-@dataclass
-class FakeAnswerSettings:
-    help_contact: str = HELP_CONTACT
-    max_message_chars: int = 500
-    links_when_unavailable: int = 3
+def web_settings(**web: object) -> Settings:
+    return Settings(web=WebSettings(**web), answer=AnswerSettings(help_contact=HELP_CONTACT))
 
 
 def answered(
