@@ -1,0 +1,218 @@
+# SCIS Help Assistant eval set (ARCHITECTURE.md D9). Public questions only, written the
+# way a student or a desk assistant would ask, never copied from tickets.
+# expect: answered (expected_urls lists the right pages) or not_covered.
+# split: dev (tuning) or holdout (run once for the README). The split was drawn once with
+# random.Random(2026), stratified: 16 + 4 dev and 8 + 2 holdout. Do not move questions.
+# author: draft (worker) or owner; the owner rewrites about 10 in real phrasing later.
+- id: q01
+  question: the vpn keeps asking me to approve on my phone and then just says login failed
+  expected_urls:
+  - https://support.cci.drexel.edu/getting-connected/vpn/vpn-troubleshooting-mfa-authentication/
+  expect: answered
+  split: dev
+  author: draft
+- id: q02
+  question: anyconnect won't connect, it says secure gateway not found
+  expected_urls:
+  - https://support.cci.drexel.edu/getting-connected/vpn/vpn-troubleshooting-secure-gateway-not-found/
+  expect: answered
+  split: dev
+  author: draft
+- id: q03
+  question: how do i get my android phone on the campus wifi
+  expected_urls:
+  - https://support.cci.drexel.edu/getting-connected/connecting-to-dragonfly3/connecting-dragonfly3-wifi-drexel-campus-android/
+  expect: answered
+  split: dev
+  author: draft
+- id: q04
+  question: my authenticator app keeps popping up sign in requests i didn't make
+  expected_urls:
+  - https://support.cci.drexel.edu/getting-connected/microsoft-multi-factor-authentication-mfa/i-keep-getting-mfa-approvals-microsoft-authenticator-app/
+  expect: answered
+  split: holdout
+  author: draft
+- id: q05
+  question: student at the desk can't get into the scis discord servers, what are the usual fixes
+  expected_urls:
+  - https://support.cci.drexel.edu/getting-connected/discord/solutions-joining-ccis-discord-servers/
+  - https://support.cci.drexel.edu/getting-connected/discord/how-join-ccis-discord-servers/
+  expect: answered
+  split: dev
+  author: draft
+- id: q06
+  question: student says ssh to tux shows REMOTE HOST IDENTIFICATION HAS CHANGED, how do we fix it
+  expected_urls:
+  - https://support.cci.drexel.edu/platforms-resources/tux/troubleshooting-tux/fix-ssh-host-key-error-tux/
+  expect: answered
+  split: dev
+  author: draft
+- id: q07
+  question: my tux account says I'm out of space, how do I see what is using it
+  expected_urls:
+  - https://support.cci.drexel.edu/platforms-resources/tux/troubleshooting-tux/tux-home-directory-storage-usage/
+  expect: answered
+  split: dev
+  author: draft
+- id: q08
+  question: how can i put a simple html website online using tux
+  expected_urls:
+  - https://support.cci.drexel.edu/platforms-resources/tux/tux-web-services/student-webpages-tux/
+  - https://support.cci.drexel.edu/platforms-resources/tux/tux-web-services/
+  expect: answered
+  split: holdout
+  author: draft
+- id: q09
+  question: git push to gitlab fails with an authentication error
+  expected_urls:
+  - https://support.cci.drexel.edu/platforms-resources/gitlabgithub/git-issue-git-push-http-failed-auth/
+  expect: answered
+  split: dev
+  author: draft
+- id: q10
+  question: how do I connect to the oracle database for my databases class from a mac
+  expected_urls:
+  - https://support.cci.drexel.edu/platforms-resources/oracle-and-linux-servers/mac-gui-config-oracle-linuxischooldrexeledu/
+  - https://support.cci.drexel.edu/platforms-resources/oracle-and-linux-servers/oracle-and-linuxccidrexel/
+  expect: answered
+  split: dev
+  author: draft
+- id: q11
+  question: how do i print to the scis printers from my own laptop
+  expected_urls:
+  - https://support.cci.drexel.edu/printing/cci-copiers/printing-papercut/adding-papercut-printers-non-drexel-computer/
+  expect: answered
+  split: holdout
+  author: draft
+- id: q12
+  question: everything i print comes out in color but i need black and white
+  expected_urls:
+  - https://support.cci.drexel.edu/printing/cci-copiers/papercut-cannot-print-black-white-or-ccibw-or-bw/
+  expect: answered
+  split: dev
+  author: draft
+- id: q13
+  question: can i get a poster printed for my research presentation
+  expected_urls:
+  - https://support.cci.drexel.edu/printing/poster-printing-at-cci-commons/
+  - https://support.cci.drexel.edu/service-catalog/printing/poster-printing/
+  expect: answered
+  split: dev
+  author: draft
+- id: q14
+  question: how do i book a room for my group project meeting
+  expected_urls:
+  - https://support.cci.drexel.edu/scis-spaces/reserving-a-meeting-room-in-cci-as-a-student/
+  expect: answered
+  split: holdout
+  author: draft
+- id: q15
+  question: my dragoncard doesn't open the doors at 3675 market
+  expected_urls:
+  - https://support.cci.drexel.edu/scis-spaces/cardaccess/
+  - https://support.cci.drexel.edu/service-catalog/building-access/dragoncard-access/
+  expect: answered
+  split: dev
+  author: draft
+- id: q16
+  question: zoom keeps telling me the meeting id is invalid
+  expected_urls:
+  - https://support.cci.drexel.edu/remote-conferencing-and-class-capture/zoom/invalid-meeting-id-or-invalid-meeting-number/
+  expect: answered
+  split: dev
+  author: draft
+- id: q17
+  question: i accidentally deleted my zoom recording, can i get it back
+  expected_urls:
+  - https://support.cci.drexel.edu/remote-conferencing-and-class-capture/zoom/recover-deleted-meeting-or-recording/
+  - https://support.cci.drexel.edu/remote-conferencing-and-class-capture/zoom/missing-or-lost-or-deleted-zoom-recordings/
+  expect: answered
+  split: holdout
+  author: draft
+- id: q18
+  question: the lecture recordings in echo360 won't play
+  expected_urls:
+  - https://support.cci.drexel.edu/remote-conferencing-and-class-capture/echo360/troubleshooting/troubleshooting-recording-playback-issues/
+  expect: answered
+  split: holdout
+  author: draft
+- id: q19
+  question: professor wants to put students into breakout rooms before the zoom class starts, how
+  expected_urls:
+  - https://support.cci.drexel.edu/remote-conferencing-and-class-capture/zoom/pre-assign-participants-breakout-rooms/
+  expect: answered
+  split: dev
+  author: draft
+- id: q20
+  question: do students get microsoft office for free
+  expected_urls:
+  - https://support.cci.drexel.edu/software-courses/office-365-or-office365/office-365-free-all-drexel-students/
+  - https://support.cci.drexel.edu/software-courses/office-365-or-office365/microsoft-office-drexel-students/
+  expect: answered
+  split: dev
+  author: draft
+- id: q21
+  question: where do i get matlab for my class
+  expected_urls:
+  - https://support.cci.drexel.edu/software-courses/matlab-access-setup-guide/
+  expect: answered
+  split: dev
+  author: draft
+- id: q22
+  question: is there a free license for intellij
+  expected_urls:
+  - https://support.cci.drexel.edu/software-courses/intellij/
+  expect: answered
+  split: holdout
+  author: draft
+- id: q23
+  question: how do i stop my drexel email from forwarding to my gmail
+  expected_urls:
+  - https://support.cci.drexel.edu/software-courses/office-365-or-office365/office-365-public-documentation-home/office-365-outlook/outlook-tips-and-tricks/outlook-stop-drexel-email-forwarding-gmail-or-other-non-drexel-email-services/
+  expect: answered
+  split: dev
+  author: draft
+- id: q24
+  question: my students say they can't see my course in canvas
+  expected_urls:
+  - https://support.cci.drexel.edu/canvas/canvas-basics/publishing-your-canvas-course-section/
+  - https://support.cci.drexel.edu/canvas/canvas-basics/student-access-to-canvas-they-must-accept-invite-in-email-or-notice/
+  expect: answered
+  split: holdout
+  author: draft
+- id: q25
+  question: best pizza near campus
+  expected_urls: []
+  expect: not_covered
+  split: dev
+  author: draft
+- id: q26
+  question: when is the fall tuition payment due
+  expected_urls: []
+  expect: not_covered
+  split: dev
+  author: draft
+- id: q27
+  question: how do i get a parking permit for the drexel garage
+  expected_urls: []
+  expect: not_covered
+  split: dev
+  author: draft
+- id: q28
+  question: can you do my cs 260 linked list homework
+  expected_urls: []
+  expect: not_covered
+  split: dev
+  author: draft
+- id: q29
+  question: how do i appeal a grade in one of my classes
+  expected_urls: []
+  expect: not_covered
+  split: holdout
+  author: draft
+- id: q30
+  question: how do i change my dining meal plan
+  expected_urls: []
+  expect: not_covered
+  split: holdout
+  author: draft

@@ -6,6 +6,8 @@ Precedence, highest first: CLI flags (applied by the caller), environment variab
 ``keyring``. Keep ``.env.example`` in step with every field.
 """
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -28,8 +30,33 @@ class RetrievalSettings(BaseModel):
     k: int = Field(default=5, ge=1, le=20)
     candidates: int = 20  # per retriever, before fusion
     max_chunks_per_page: int = 2
-    min_score: float = 0.55  # dense cosine; tuned in payload 02
-    min_bm25: float = 5.0  # top BM25 score that counts as a lexical hit; tuned in 02
+    # The confidence gate (tuned on the dev split in payload 02): a search is confident when the
+    # best dense cosine reaches min_score. BM25 scores grow with query length, so they don't
+    # separate in- from out-of-scope questions; min_bm25 (None = off) is an optional extra way
+    # through the gate for a lexical hit.
+    min_score: float = 0.65
+    min_bm25: float | None = None
+
+
+class LlmSettings(BaseModel):
+    enabled: bool = True
+    model: str = "claude-haiku-5-5"
+    effort: Literal["low", "medium", "high"] = "low"
+    max_output_tokens: int = Field(default=600, ge=64, le=4096)
+    max_output_tokens_desk: int = Field(default=900, ge=64, le=4096)
+    daily_token_budget: int = Field(default=200_000, ge=1_000, le=10_000_000)
+    timeout_seconds: int = Field(default=30, ge=5, le=120)
+    # USD per million tokens for claude-haiku-5-5, prompts <= 100K (checked 2026-10-21).
+    input_usd_per_mtok: float = 0.10
+    output_usd_per_mtok: float = 0.50
+    cache_read_usd_per_mtok: float = 0.01
+    cache_write_usd_per_mtok: float = 0.125  # 5-minute cache writes
+
+
+class AnswerSettings(BaseModel):
+    help_contact: str = 'the help desk: https://support.cci.drexel.edu/ ("Talk to a person")'
+    max_message_chars: int = Field(default=500, ge=50, le=4000)
+    links_when_unavailable: int = 3
 
 
 class WebSettings(BaseModel):
@@ -57,7 +84,8 @@ class Settings(BaseSettings):
     crawl: CrawlSettings = CrawlSettings()
     index: IndexSettings = IndexSettings()
     retrieval: RetrievalSettings = RetrievalSettings()
-    # payload 02 adds llm and answer
+    llm: LlmSettings = LlmSettings()
+    answer: AnswerSettings = AnswerSettings()
     web: WebSettings = WebSettings()
 
 
