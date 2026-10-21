@@ -60,3 +60,18 @@ def test_web_defaults_and_origins_from_env(monkeypatch):
     assert settings.web.desk_local_only is True
     monkeypatch.setenv("SCIS_HELP_WEB__ALLOWED_ORIGINS", '["http://127.0.0.1:9000"]')
     assert load_settings().web.allowed_origins == ["http://127.0.0.1:9000"]
+
+
+def test_env_example_lists_every_setting():
+    from pathlib import Path
+
+    from scis_help.common.config import Settings
+
+    example = (Path(__file__).parents[2] / ".env.example").read_text(encoding="utf-8")
+    missing = [
+        f"SCIS_HELP_{section.upper()}__{name.upper()}"
+        for section, field in Settings.model_fields.items()
+        for name in field.annotation.model_fields
+        if f"SCIS_HELP_{section.upper()}__{name.upper()}=" not in example
+    ]
+    assert missing == []
