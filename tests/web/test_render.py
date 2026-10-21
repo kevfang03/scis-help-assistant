@@ -111,3 +111,19 @@ def test_urls_in():
     assert urls_in('the help desk: https://support.example.test/ ("Talk to a person")') == [
         "https://support.example.test/"
     ]
+
+
+def test_backticked_urls_stay_plain_code_never_links():
+    # Fix A: the engine keeps a URL found verbatim in a source only as code; even a source or
+    # trusted URL in backticks must not become a link.
+    contact = "https://support.example.test/"
+    html = render_answer(
+        f"Open `http://neverssl.com`, ping `tux.cs.example.edu` or see `{VPN_URL}` [1].",
+        SOURCES,
+        trusted=[contact],
+    )
+    assert "<code>http://neverssl.com</code>" in html
+    assert "<code>tux.cs.example.edu</code>" in html
+    assert f"<code>{VPN_URL}</code>" in html
+    assert html.count("<a ") == 1  # only the [1] reference
+    assert re.findall(r'href="([^"]*)"', html) == [VPN_URL]

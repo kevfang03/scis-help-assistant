@@ -1,4 +1,5 @@
 import json
+from dataclasses import replace
 
 import pytest
 
@@ -109,6 +110,53 @@ def test_links_come_from_chunks_even_when_the_model_writes_urls():
     assert "evil.example" not in answer.text
     assert "the guide" in answer.text
     assert [s.url for s in answer.sources] == ["https://support.example.test/page-1/"]
+
+
+def with_text(n: int, text: str):
+    return replace(chunk(n), text=text)
+
+
+def test_url_verbatim_in_a_source_is_kept_as_code():
+    source = "Open http://neverssl.com or ping tux.cs.example.edu to test."
+    chunks = [with_text(1, source), chunk(2)]
+    reply = answered("Open http://neverssl.com. Then ping tux.cs.example.edu [S1].", ["S1"])
+    engine, _, _ = make(reply, chunks=chunks)
+    answer = engine.ask("is my internet working")
+    assert answer.text == "Open `http://neverssl.com`. Then ping `tux.cs.example.edu` [1]."
+
+
+def test_invented_url_and_host_are_stripped():
+    chunks = [with_text(1, "Open neverssl.com to test."), chunk(2)]
+    reply = answered(
+        "Open https://neverssl.com/ or www.evil.example and fake-help.com, see neverssl.com [S1].",
+        ["S1"],
+    )
+    engine, _, _ = make(reply, chunks=chunks)
+    answer = engine.ask("q")
+    assert "evil" not in answer.text and "fake-help" not in answer.text
+    assert "https://" not in answer.text
+    assert answer.text.endswith("see `neverssl.com` [1].")
+
+
+def test_url_from_a_source_that_was_not_provided_is_stripped():
+    # The host is on another page of the site, but that chunk was not sent to the model; the
+    # page URLs from the index metadata are not in any chunk text either.
+    reply = answered("Use vpn.example.edu or https://support.example.test/page-1/ [S1].", ["S1"])
+    engine, retriever, _ = make(reply)
+    assert all("vpn.example.edu" not in c.text for c in retriever.chunks)
+    answer = engine.ask("q")
+    assert answer.text == "Use  or  [1]."
+
+
+def test_urls_inside_code_spans_and_emails():
+    chunks = [with_text(1, "Run ssh user@tux.example.edu or mail help@example.edu."), chunk(2)]
+    reply = answered(
+        "Run `ssh user@tux.example.edu`, not `evil.example.com`, or mail help@example.edu [S1].",
+        ["S1"],
+    )
+    engine, _, _ = make(reply, chunks=chunks)
+    answer = engine.ask("q")
+    assert answer.text == "Run `ssh user@tux.example.edu`, not , or mail help@example.edu [1]."
 
 
 def test_two_chunks_of_one_page_share_a_number():

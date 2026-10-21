@@ -2,12 +2,15 @@
 
 Grounding rules enforced here, in code: the model only sees retrieved chunks; source ids it
 invents are dropped; an "answered" with no valid source becomes "not covered"; every link shown
-comes from the index metadata of a chunk the model was given, never from the model's text.
+comes from the index metadata of a chunk the model was given, never from the model's text. A
+URL or host name may stay in the answer text only as code (plain text, never a link), and only
+if it appears verbatim in a chunk the model was given.
 """
 
 import logging
 import re
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from scis_help.answer import prompts
@@ -27,7 +30,17 @@ _SOURCE_ID = re.compile(r"S?(\d+)", re.IGNORECASE)
 _BARE_GROUP = re.compile(r"\[\s*(\d{1,2}(?:\s*[,;]\s*\d{1,2})*)\s*\](?!\()")
 # Markdown links lose their target ([label](url) -> label); links come from the index only.
 _MARKDOWN_LINK = re.compile(r"\[([^\]\n]+)\]\((?:https?://|www\.)[^)\s]*\)")
-_BARE_URL = re.compile(r"(?:https?://|www\.)[^\s)\]>\"']+", re.IGNORECASE)
+# URLs with a scheme or www., and bare host names on common top-level domains (neverssl.com,
+# cs.drexel.edu/~user). Not after @ (emails) or inside a longer dotted word.
+_URL_OR_HOST = re.compile(
+    r"(?<![\w@.-])(?:(?:https?://|www\.)[^\s)\]>\"'`]+"
+    r"|(?:[a-z0-9-]+\.)+(?:com|edu|org|net|gov|io|us|info|me|co|ai|dev|app)\b"
+    r"(?:/[^\s)\]>\"'`]*)?)",
+    re.IGNORECASE,
+)
+_TRAILING = ".,;:!?"
+# Inline code spans and fenced blocks: `x`, ``x``, ```...```.
+_CODE_SPAN = re.compile(r"(`+)(.+?)\1", re.DOTALL)
 
 
 @dataclass(frozen=True, slots=True)
@@ -150,7 +163,9 @@ class Engine:
                 conversation,
             )
 
-        checked = self._validate(outcome.value, len(hits), conversation, question)
+        checked = self._validate(
+            outcome.value, [hit.chunk.text for hit in hits], conversation, question
+        )
         if checked.status == "not_covered":
             answer = Answer(
                 status="not_covered",
@@ -188,11 +203,15 @@ class Engine:
     # -- steps --
 
     def _validate(
-        self, model: ModelAnswer, count: int, conversation: Conversation, question: str
+        self,
+        model: ModelAnswer,
+        sources: Sequence[str],
+        conversation: Conversation,
+        question: str,
     ) -> _Validated:
         """Drop unknown source ids and their citations; turn an unsupported answer or a second
-        clarification into not covered."""
-        valid = set(range(1, count + 1))
+        clarification into not covered. ``sources`` are the chunk texts the model was given."""
+        valid = set(range(1, len(sources) + 1))
         if model.status == "not_covered":
             return _Validated("not_covered", "", [], None, "model")
         if model.status == "clarify":
@@ -202,7 +221,7 @@ class Engine:
             conversation.clarify_asked = True
             conversation.pending_question = question
             # The question alone: the model's lead-in often asks the same thing again.
-            clarifying = _strip_links(_CITATION_GROUP.sub("", clarifying)).strip()
+            clarifying = _strip_links(_CITATION_GROUP.sub("", clarifying), sources).strip()
             return _Validated("clarify", clarifying, [], clarifying, None)
 
         listed = [n for source_id in model.used_sources for n in _ids_in(source_id)]
@@ -213,7 +232,7 @@ class Engine:
 
         text = _BARE_GROUP.sub(lambda m: "[" + re.sub(r"(\d+)", r"S\1", m[1]) + "]", model.answer)
         text = _CITATION_GROUP.sub(keep_valid, text)
-        text = _strip_links(text).strip()
+        text = _strip_links(text, sources).strip()
         cited = [n for match in _CITATION_GROUP.finditer(text) for n in _ids_in(match[1])]
         used: list[int] = []
         for n in cited + listed:  # first mention in the text, then the rest of used_sources
@@ -359,6 +378,29 @@ class Engine:
         return answer
 
 
-def _strip_links(text: str) -> str:
+def _strip_links(text: str, sources: Sequence[str]) -> str:
+    """Markdown links become their label. A URL or host name that appears verbatim in one of
+    ``sources`` stays as code (in backticks, so it renders as text, not a link); any other is
+    removed."""
     text = _MARKDOWN_LINK.sub(r"\1", text)
-    return _BARE_URL.sub("", text)
+
+    def plain(match: re.Match[str], *, in_code: bool) -> str:
+        url = match[0].rstrip(_TRAILING)
+        tail = match[0][len(url) :]
+        if not any(url in source for source in sources):
+            return tail
+        return url + tail if in_code else f"`{url}`{tail}"
+
+    def outside(part: str) -> str:
+        return _URL_OR_HOST.sub(lambda m: plain(m, in_code=False), part)
+
+    parts: list[str] = []
+    end = 0
+    for span in _CODE_SPAN.finditer(text):
+        parts.append(outside(text[end : span.start()]))
+        inner = _URL_OR_HOST.sub(lambda m: plain(m, in_code=True), span[2])
+        if inner.strip():
+            parts.append(span[1] + inner + span[1])
+        end = span.end()
+    parts.append(outside(text[end:]))
+    return "".join(parts)
