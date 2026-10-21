@@ -38,3 +38,20 @@ uv run scis-help status
 
 Page text, the index and logs live in your user data folder (`scis-help status` prints it),
 never in the repository.
+
+## Local web app and chat widget
+
+Starts a local demo page with the chat bubble on `http://127.0.0.1:8765/` (desk mode on
+`/desk`, this computer only) and opens your browser. Needs the index from the steps above.
+Without a saved API key the answers are links only.
+
+```bash
+uv run scis-help web
+```
+
+To embed the widget on another local page, add its origin to
+`SCIS_HELP_WEB__ALLOWED_ORIGINS` (see `.env.example`) and put one tag on the page:
+
+```html
+<script src="http://127.0.0.1:8765/widget.js" data-mode="public" defer></script>
+```
