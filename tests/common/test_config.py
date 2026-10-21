@@ -51,3 +51,12 @@ def test_atomic_json_write_replaces_whole_file(tmp_path):
     write_json_atomic(target, {"b": 2})
     assert target.read_text(encoding="utf-8").replace(" ", "").replace("\n", "") == '{"b":2}'
     assert not (tmp_path / "sub" / "state.json.tmp").exists()
+
+
+def test_web_defaults_and_origins_from_env(monkeypatch):
+    settings = load_settings()
+    assert (settings.web.host, settings.web.port) == ("127.0.0.1", 8765)
+    assert settings.web.allowed_origins == []
+    assert settings.web.desk_local_only is True
+    monkeypatch.setenv("SCIS_HELP_WEB__ALLOWED_ORIGINS", '["http://127.0.0.1:9000"]')
+    assert load_settings().web.allowed_origins == ["http://127.0.0.1:9000"]
