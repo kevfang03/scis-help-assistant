@@ -30,8 +30,12 @@ class RetrievalSettings(BaseModel):
     k: int = Field(default=5, ge=1, le=20)
     candidates: int = 20  # per retriever, before fusion
     max_chunks_per_page: int = 2
-    min_score: float = 0.55  # dense cosine; tuned in payload 02
-    min_bm25: float = 5.0  # top BM25 score that counts as a lexical hit; tuned in 02
+    # The confidence gate (tuned on the dev split in payload 02): a search is confident when the
+    # best dense cosine reaches min_score. BM25 scores grow with query length, so they don't
+    # separate in- from out-of-scope questions; min_bm25 (None = off) is an optional extra way
+    # through the gate for a lexical hit.
+    min_score: float = 0.65
+    min_bm25: float | None = None
 
 
 class LlmSettings(BaseModel):

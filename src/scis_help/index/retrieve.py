@@ -41,7 +41,7 @@ class RetrievalResult:
     hits: list[Hit]  # fused, <= max_chunks_per_page per URL, length <= k
     best_dense: float
     best_bm25: float
-    confident: bool  # best_dense >= min_score or best_bm25 >= min_bm25
+    confident: bool  # best_dense >= min_score (or best_bm25 >= min_bm25 when that is set)
 
 
 class IndexMissing(Exception):
@@ -144,7 +144,9 @@ class Retriever:
 
         best_dense = float(masked[order[0]])
         best_bm25 = bm25_hits[0][1] if bm25_hits else 0.0
-        confident = best_dense >= config.min_score or best_bm25 >= config.min_bm25
+        confident = best_dense >= config.min_score or (
+            config.min_bm25 is not None and best_bm25 >= config.min_bm25
+        )
         return RetrievalResult(
             hits=hits, best_dense=best_dense, best_bm25=best_bm25, confident=confident
         )

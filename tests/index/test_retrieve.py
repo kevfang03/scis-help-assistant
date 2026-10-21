@@ -104,7 +104,9 @@ def test_not_confident_when_nothing_matches():
     assert not result.confident
 
 
-def test_confident_from_bm25_alone():
+def test_confident_from_bm25_alone_only_when_min_bm25_is_set():
+    settings = _build(embedder=ConstantEmbedder(), min_score=1.01)
+    assert not _load(settings, ConstantEmbedder()).search("EXREPO").confident
     settings = _build(embedder=ConstantEmbedder(), min_score=1.01, min_bm25=0.1)
     result = _load(settings, ConstantEmbedder()).search("EXREPO")
     assert result.best_bm25 >= 0.1

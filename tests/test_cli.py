@@ -118,7 +118,9 @@ VPN_DOCS = [
 
 
 @pytest.fixture
-def small_index(fake_models):
+def small_index(fake_models, monkeypatch):
+    # The hash test embedder gives lower cosines than the real model; gate on test scale.
+    monkeypatch.setenv("SCIS_HELP_RETRIEVAL__MIN_SCORE", "0.3")
     build_index(make_settings(), [FakeSource(VPN_DOCS)], embedder=HashEmbedder())
 
 
