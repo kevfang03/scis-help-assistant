@@ -46,4 +46,5 @@ Goal · Context/links to docs · Files to create or modify · Step-by-step tasks
 - Layout: `src/scis_help/` (subpackages per [ARCHITECTURE.md](docs/ARCHITECTURE.md#layout)); tests in `tests/` mirroring it.
 - Tooling: `uv`, `pyproject.toml` (hatchling), `pytest`, `ruff` (line length 100; rules E, F, I, UP, B). Type hints on public functions. Dataclasses or pydantic models for data shapes.
 - Tests never touch the network: fake the SDK client, the HTTP transport (`httpx.MockTransport`) and the embedder.
+- Date and time tests must pass under `TZ=UTC`, not only in local time: CI runs in UTC. Build each test time fresh in its target zone (or work in UTC and convert) instead of adding a `timedelta` to an aware local datetime, and run time-related tests once with `TZ=UTC0` before committing. See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for the incident.
 - CLI entry point: `scis-help` (`uv run scis-help ...`). Exit codes in `common/exitcodes.py`.
