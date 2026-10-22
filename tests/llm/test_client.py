@@ -132,11 +132,13 @@ def test_day_rolls_over_at_local_midnight_and_31_days_are_kept():
     clock.now = clock.now + timedelta(minutes=2)
     assert client.usage_today()["calls"] == 0
     call(client)
-    clock.now = clock.now + timedelta(days=31)
+    # A fresh local noon, not now + 31 days: adding days keeps the old UTC offset, so a
+    # daylight-saving change in between would move the date in some time zones.
+    clock.now = local(month=11, day=21)
     call(client)
     data = json.loads((paths.data_dir() / "llm-usage.json").read_text(encoding="utf-8"))
     days = sorted(data["days"])
-    assert "2026-10-21" not in days  # 32 days before the last call: pruned
+    assert "2026-10-21" not in days  # 31 days before the last call: pruned
     assert len(days) == 2 and data["schema"] == 1
 
 
